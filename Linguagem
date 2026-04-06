@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>VARYAN — Grimório</title>
+<style>
+body{font-family:Georgia;background:#0b0b0f;color:#eaeaea;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+.container{background:#0f0f14;padding:30px;border-radius:20px;border:1px solid #222;box-shadow:0 0 30px #000;text-align:center}
+h1{color:#ff4d6d;letter-spacing:3px}
+textarea{width:350px;height:120px;margin:10px;border-radius:10px;border:1px solid #333;padding:10px;background:#050505;color:#fff}
+button{margin:5px;padding:10px 15px;border:none;border-radius:10px;background:#ff4d6d;color:#fff;cursor:pointer}
+#output{margin-top:20px;color:#ff4d6d}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>✦ VARYAN ✦</h1>
+<textarea id="input" placeholder="Sussurre palavras..."></textarea>
+
+<div>
+<button onclick="ptParaVaryan()">PT → Varyan</button>
+<button onclick="varyanParaPt()">Varyan → PT</button>
+</div>
+
+<div>
+<button onclick="exportar()">Exportar</button>
+<button onclick="document.getElementById('file').click()">Importar</button>
+<input type="file" id="file" hidden onchange="importar(event)">
+</div>
+
+<div id="output"></div>
+</div>
+
+<script>
+let memoriaPT = JSON.parse(localStorage.getItem("varyan_pt")||"{}");
+let memoriaVY = JSON.parse(localStorage.getItem("varyan_vy")||"{}");
+
+function salvar(){
+localStorage.setItem("varyan_pt",JSON.stringify(memoriaPT));
+localStorage.setItem("varyan_vy",JSON.stringify(memoriaVY));
+}
+
+// BASE LATINA
+const base={
+eu:"ego",voce:"tu",amor:"amare",sangue:"sanguis",morte:"mors",alma:"anima",noite:"nox",luz:"lux"};
+
+const silabas=["vel","dra","noct","aeth","mor","val","kael","ser","thal","ryn"];
+const sufixos=["us","um","ae","is","or","ix","ium","eth"];
+
+// GERADOR ÚNICO
+function gerarUnico(p){
+let seed=0;
+for(let i=0;i<p.length;i++) seed+=p.charCodeAt(i);
+
+let s1=silabas[seed%silabas.length];
+let s2=silabas[(seed+3)%silabas.length];
+let suf=sufixos[seed%sufixos.length];
+
+return s1+s2+suf;
+}
+
+function normalizar(t){
+return t.toLowerCase().normalize("NFD").replace(/[^a-zA-Z\s]/g,"");
+}
+
+function ptParaVaryan(){
+let texto=normalizar(document.getElementById("input").value);
+let res=texto.split(" ").map(p=>{
+if(!p) return "";
+if(memoriaPT[p]) return memoriaPT[p];
+if(base[p]) return base[p];
+
+let novo=gerarUnico(p);
+memoriaPT[p]=novo;
+memoriaVY[novo]=p;
+salvar();
+return novo;
+}).join(" ");
+
+output.innerText=res;
+}
+
+function varyanParaPt(){
+let texto=document.getElementById("input").value.toLowerCase();
+let res=texto.split(" ").map(p=>{
+return memoriaVY[p]||Object.keys(base).find(k=>base[k]===p)||"[?]";
+}).join(" ");
+
+output.innerText=res;
+}
+
+function exportar(){
+let blob=new Blob([JSON.stringify({pt:memoriaPT,vy:memoriaVY})],{type:"application/json"});
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="varyan.json";
+a.click();
+}
+
+function importar(e){
+let file=e.target.files[0];
+let reader=new FileReader();
+reader.onload=function(ev){
+let data=JSON.parse(ev.target.result);
+memoriaPT={...memoriaPT,...(data.pt||{})};
+memoriaVY={...memoriaVY,...(data.vy||{})};
+salvar();
+output.innerText="Grimório restaurado";
+}
+reader.readAsText(file);
+}
+
+// TESTES
+// "dragao" deve virar algo totalmente novo tipo "noctvalium"
+// repetir palavra deve manter tradução
+</script>
+
+</body>
+</html>
